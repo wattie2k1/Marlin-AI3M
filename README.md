@@ -1,148 +1,37 @@
-# Anycubic i3 Mega Marlin 1.1.9 by davidramiro
+# Anycubic i3 Mega Marlin 1.1.9 by wattie2k1 davidramiro
 
-This is my slightly customized version of the [Marlin Firmware](https://github.com/MarlinFirmware/Marlin), gratefully based on [derhopp's repo](https://github.com/derhopp/Marlin-with-Anycubic-i3-Mega-TFT) with his remarkable efforts to get the Anycubic i3 Mega TFT screen to work.
+This is my forked version of davidramiros version of Marlin firmware for the Anycubic i3 Mega. This version has been modified to be able to use a BLTouch sensor for automatic bed leveling.
 
-Feel free to discuss issues and work with me further optimizing this firmware!
+## How to level your bed with a BLTouch sensor
 
-I am running this version on an i3 Mega Ultrabase V3 (for distinction of the different versions, check [this Thingiverse thread](https://www.thingiverse.com/groups/anycubic-i3-mega/forums/general/topic:27064)).
-Basically, this should work on every Ultrabase version that has two Z-axis endstops. The new Mega-S works too, but calibrating your extruder is mandatory since it needs to have increased E-steps to around fivefold of the original value, see the instructions below.
+At first meassure the offset of the nozzle:
 
-Note: This is just a firmware, not magic. A big part of print quality still depends on your slicer settings and mechanical condition of your machine. Since I have reduced the acceleration and jerk settings a bit, depending on your slicer the estimated print time might be around 20% lower. You can compensate that loss of speed by raising the general print speed without losing quality.
+- G28
+- G90
+- G1 Z10
+- G1 X40 Y40 F4000
+- M280 P0 S10
+- G91
+- Now move the nozzle down with G1 Z-1 or G1 Z-0.1 until the BLTouch sensor is activated.
+- acknowledge the BLTouch with M280 P0 S160
+- M114 
+- G90
+- G1 X72 Y64 F4000
+- G91
+- G1 Z-0.1
+- M114
+- M851 Z-<Offset>
+- M500
 
-## Known issues:
+This only has to be done once, it should be done again if you changes are done to the bed itself.
 
-- Special characters on any file or folders name on the SD card will cause the file menu to freeze. Simply replace or remove every special character (Chinese, Arabic, Russian, accents, German & Scandinavian umlauts, ...) from the name. Symbols like dashes or underscores are no problem.
-**Important note: On the SD card that comes with the printer there is a folder with Chinese characters in it by default. Please rename or remove it.**
+- Heat up your bed
+- G28
+- G29
+- M500
 
-## Why use this?
+Bed leveling is done at this point, the only thing left to do is make sure you enabled using the measured bed level point by using M420 S1 in your start script. Simply set this command after G28.
 
-While the i3 Mega is a great printer for its price and produces fantastic results in stock, there are some issues that are easily addressed:
-
-- Many people have issues getting the Ultrabase leveled perfectly, using Manual Mesh Bed Leveling the printer generates a mesh of the flatness of the bed and compensates for it on the Z-axis for perfect prints without having to level with the screws.
-- Much more efficient bed heating by using PID control. This uses less power and holds the temperature at a steady level. Highly recommended for printing ABS.
-- Fairly loud fans, while almost every one of them is easily replaced, the stock FW only gives out 9V instead of 12V on the parts cooling fan so some fans like Noctua don't run like they should. This is fixed in this firmware.
-- Even better print quality by adding Linear Advance, S-Curve Acceleration and some tweaks on jerk and acceleration.
-- Thermal runaway protection: Reducing fire risk by detecting a faulty or misaligned thermistor. 
-- Very loud stock stepper motor drivers, easily replaced by Watterott or FYSETC TMC2208. To do that, you'd usually have to flip the connectors on the board, this is not necessary using this firmware.
-- No need to slice and upload custom bed leveling tests, simply start one with a simple G26 command.
-- Easily start an auto PID tune or mesh bed leveling via the special menu (insert SD card, select special menu and press the round arrow)
-
-## How to flash this?
-
-I provided three different precompiled hex files: One for no modifications on the stepper motor drivers - good for people who didn't touch anything yet, one for boards with TMC2208 installed and where the connectors have been flipped and one with TMC2208 and the connectors in original orientation.
-
-### Choose your precompiled hex:
-
-- Choose the correct hex file:
-- For TMC2208 with connectors in original orientation, use `Marlin-AI3M-XXXXXX-TMC2208.hex`
-- If you use TMC2208 and already reversed your connectors, use `Marlin-AI3M-XXXXXX-TMC2208_reversed.hex`
-- If you use a newer version of the TMC2208 that doesn't require the connector to be reversed (TMC2208 "v2.0" written on the PCB, chip on the top side), please also use `Marlin-AI3M-XXXXXX-TMC2208_reversed.hex`.
-- If you use the original stepper motor drivers, use `Marlin-AI3M-XXXXXX-stock_drivers.hex`.
-
-### Or compile it yourself:
-
-- Download Arduino IDE
-- Clone or download this repo
-- In the IDE, under `Tools -> Board` select `Genuino Mega 2560` and `ATmega2560`
-- Open Marlin.ino in the Marlin directory of this repo
-- Customize if needed and under `Sketch`, select `Export compiled binary`
-- Look for the .hex file in your temporary directory, e.g. `.../AppData/Local/Temp/arduino_build_xxx/` (only the `Marlin.ino.hex`, not the `Marlin.ino.with_bootloader.hex`!)
-
-### After obtaining the hex file: 
-
-- Flash the hex with Cura, OctoPrint or similar
-- Use a tool with a terminal (OctoPrint, Pronterface, Repetier Host, ...) to send commands to your printer. 
-- Connect to the printer and send the following commands:
-- `M502` - load hard coded default values
-- `M500` - save them to EEPROM
-
-## Calibration & Tuning
-
-### Manual Mesh Bed Leveling
-
-If you have issues with an uneven bed, this is a great feature.
-
-- Level your preheated bed as well as you can
-- Send `G29 S1`, your nozzle will go to the first calibration position
-- Don't adjust the bed itself with screws, only use software from here on:
-- Use a paper (I recommend using thermopaper like a receipt or baking paper)
-- Use the onscreen controls or a tool like OctoPrint to lower or raise your nozzle until you feel a light resistance
-- If 0.1 mm steps are not enough, you can send specific commands down to 0.02 mm via those three commands:
-- To raise: `G91`, `G1 Z+0.02`, `G90` (one after another, not in one line)
-- To lower: `G91`, `G1 Z-0.02`, `G90`
-- I also added fine Z axis controls to the special menu, might be easier to use.
-- When done, send `G29 S2` and repeat the process for the next level point. Continue with `G29 S2`every time.
-- After finishing the 25 points, the printer will beep and calculate. 
-- After seeing `ok` in the console, send `M500` to save.
-- To ensure your mesh gets used on every print from now on, go into your slicer settings and look for the start GCode
-- Look for the Z-homing (either just `G28` or `G28 Z0`) command and insert these two right underneath it:
-```
-M501
-M420 S1
-```
-- Enjoy never having to worry about an uneven bed again!
-
-Note: By default, this firmware probes 25 points. This might take little while, if you don't need an as precise mesh, you can change the grid size by sending `G29 Px` before starting the leveling. E.g., `G29 P3` results in a 3x3 mesh, thus only 9 points.
-
-### Testing your bed leveling
-
-- No need to download or create a bed leveling test, simply send those commands to your printer:
-```
-G28
-G26 C H200 P25 R25
-```
-- To adjust your filament's needed temperature, change the number of the `H` parameter
-- If your leveling is good, you will have a complete pattern of your mesh on your bed that you can peel off in one piece
-- Optional: Hang it up on a wall to display it as a trophy of how great your leveling skills are.
-
-
-### Calibrating extruder & PID
-
-This firmware is using Anycubic's default extruder values and pretty well calibrated PID values. If you experience fluctuating temperatures or subpar extrusion, calibration is recommended.
-
-### Extruder steps
-
-- Preheat the hotend with `M104 S220`
-- Send `M83` to prepare the extruder
-- Use a caliper or measuring tape and mark 120 mm (measured downwards from the extruder intake) with a pencil on the filament
-- Send `G1 E100 F100`
-- Your extruder will feed 100 mm of filament now (takes 60 seconds)
-- Measure where your pencil marking is now. If it's exactly 20 mm to the extruder, it's perfectly calibrated
-- If it's less or more than 20 mm, subtract that value from 120 mm, e.g.:
-- If you measure 25 mm, your result would be 95 mm. If you measure 15 mm, your result would be 105 mm
-- Calculate your new value: (100 mm / actually extruded filament) * 92.6
-- For example, if your markings are at 15 mm, you'd calculate: (100/105) * 92.6 = 88.19
-- Put in the new value like this: `M92 X80.00 Y80.00 Z400.00 Exxx.xx`, replacing `x` with your value
-- Save with `M500`
-- Finish with `M82`
-
-
-### PID tuning
-
-- Turn on parts cooling fan If you have a radial blower fan like the original one, I generally recommend running it at 70% because of the 12V mod (`M106 S191`). Remember to also limit it in your slicer.
-- Send `M303 E0 S210 C6 U1` to start extruder PID auto tuning
-- Wait for it to finish
-- Send `M303 E-1 S60 C6 U1` to start heatbed PID auto tuning
-- Wait for it to finish
-- Save with `M500`, turn off fan with `M106 S0`
-
-Note: These commands are tweaked for PLA printing at up to 210/60 °C. If you run into issues at higher temperatures (e.g. PETG & ABS), simply change the `S` parameter to your desired temperature
-
-**Reminder**: PID tuning sometimes fails. If you get fluctuating temperatures or the heater even fails to reach your desired temperature, you can always go back to the stock settings by sending `M301 P15.94 I1.17 D54.19` and save with `M500`.
-
-## Detailed changes:
-
-- Thermal runaway protection enabled
-- Stepper orientation flipped (you don't have to flip the connectors on the board anymore)
-- Linear advance unlocked (Off by default. [Research, calibrate](http://marlinfw.org/docs/features/lin_advance.html) and then enable with `M900 Kx`)
-- S-Curve Acceleration enabled
-- G26 Mesh Validation enabled
-- Some redundant code removed to save memory
-- Manual mesh bed leveling enabled ([check this link](https://github.com/MarlinFirmware/Marlin/wiki/Manual-Mesh-Bed-Leveling) to learn more about it)
-- Heatbed PID mode enabled
-- Minor tweaks on default jerk and acceleration
-- 12V capability on FAN0 (parts cooling fan) enabled
-- No startup beep
 
 
 ## Menu mods by derhopp:
